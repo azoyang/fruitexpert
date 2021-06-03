@@ -9,3 +9,5 @@ Windows + Chorme
 测试环境：
 本机 localhost访问
 外网必须使用https
+演示地址：
+https://www.fbikids.com/fruitexpert/index.html
