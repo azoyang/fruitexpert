@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+
+  <title> FruitExport</title>
+
+  <!--http://www.html5rocks.com/en/mobile/mobifying/-->
+  <meta name="viewport"
+        content="width=device-width,user-scalable=no,initial-scale=1, minimum-scale=1,maximum-scale=1"/>
+
+  <!--https://developer.apple.com/library/safari/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html-->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- force webkit on 360 -->
+  <meta name="renderer" content="webkit"/>
+  <meta name="force-rendering" content="webkit"/>
+  <!-- force edge on IE -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+  <meta name="msapplication-tap-highlight" content="no">
+
+  <!-- force full screen on some browser -->
+  <meta name="full-screen" content="yes"/>
+  <meta name="x5-fullscreen" content="true"/>
+  <meta name="360-fullscreen" content="true"/>
+  
+  <!-- force screen orientation on some browser -->
+  <meta name="screen-orientation" content="landscape"/>
+  <meta name="x5-orientation" content="landscape">
+
+  <!--fix fireball/issues/3568 -->
+  <!--<meta name="browsermode" content="application">-->
+  <meta name="x5-page-mode" content="app">
+
+  <!--<link rel="apple-touch-icon" href=".png" />-->
+  <!--<link rel="apple-touch-icon-precomposed" href=".png" />-->
+
+  <link rel="stylesheet" type="text/css" href="style-mobile.css"/>
+
+</head>
+<body>
+<div class="container" style="display:none">
+<video class="input_video"></video>
+<canvas class="output_canvas" width="1280px" height="720px"></canvas>
+</div>
+  <canvas id="GameCanvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+  <div id="splash">
+    <div class="progress-bar stripes">
+      <span style="width: 0%"></span>
+    </div>
+  </div>
+<script src="src/settings.js" charset="utf-8"></script>
+<script src="main.js" charset="utf-8"></script>
+<script type="text/javascript">
+// 阻止F11键默认事件，用HTML5全屏API代替
+	window.addEventListener('keydown', function (e) {
+		e = e || window.event
+		if (e.keyCode===122 && !isFull) {
+			e.preventDefault()
+			enterFullScreen()
+		}
+	})
+ 
+ // 打开浏览器全屏模式
+   function enterFullScreen () {
+      let el = document.documentElement
+      let rfs = el.requestFullScreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen
+      if (rfs) { // typeof rfs != "undefined" && rfs
+        rfs.call(el)
+      } else if (typeof window.ActiveXObject !== 'undefined') {
+        // for IE，这里其实就是模拟了按下键盘的F11，使浏览器全屏
+        let wscript = new ActiveXObject('WScript.Shell')
+        if (wscript != null) {
+          wscript.SendKeys('{F11}')
+        }
+      }
+    }
+ 
+    // 退出全屏
+    function exitFullScreen () {
+      let el = document
+      let cfs = el.cancelFullScreen || el.mozCancelFullScreen || el.msExitFullscreen || el.webkitExitFullscreen || el.exitFullscreen
+      if (cfs) { // typeof cfs != "undefined" && cfs
+        cfs.call(el)
+      } else if (typeof window.ActiveXObject !== 'undefined') {
+        // for IE，这里和fullScreen相同，模拟按下F11键退出全屏
+        let wscript = new ActiveXObject('WScript.Shell')
+        if (wscript != null) {
+          wscript.SendKeys('{F11}')
+        }
+      }
+    }
+(function () {
+    // open web debugger console
+    if (typeof VConsole !== 'undefined') {
+        window.vConsole = new VConsole();
+    }
+
+    var debug = window._CCSettings.debug;
+    var splash = document.getElementById('splash');
+    splash.style.display = 'block';
+
+    function loadScript (moduleName, cb) {
+      function scriptLoaded () {
+          document.body.removeChild(domScript);
+          domScript.removeEventListener('load', scriptLoaded, false);
+          cb && cb();
+      };
+      var domScript = document.createElement('script');
+      domScript.async = true;
+      domScript.src = moduleName;
+      domScript.addEventListener('load', scriptLoaded, false);
+      document.body.appendChild(domScript);
+    }
+
+    loadScript(debug ? 'cocos2d-js.js' : 'cocos2d-js-min.js', function () {
+      if (CC_PHYSICS_BUILTIN || CC_PHYSICS_CANNON) {
+        loadScript(debug ? 'physics.js' : 'physics-min.js', window.boot);
+      }
+      else {
+        window.boot();
+      }
+    });
+})();
+</script>
+
+
+
+<script src="https://aiedu.qcloud.com/soe/TencentSOE-0.1.4.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.1.1606863050/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.1/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.1.1606873488/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.1.1606863095/hands.js" crossorigin="anonymous"></script>
+<script type="module">
+  var TransInitUrl="";
+  var myVoiceRecorder=null;
+  var recorderState=0;
+  window.createRecorder=function(){
+    if(myVoiceRecorder==null){
+		enterFullScreen();
+		var WorkMode =1;// 上传方式：语音输入模式，0流式分片（微信端无效），1非流式一次性评估
+		var EvalMode =0;//0：词模式（中文评测模式下为文字模式），1：句子模式，2：段落模式，3：自由说模式
+		var StorageMode = 1;//0：不存储，1：存储到公共对象存储，
+		var ServerType =0;//0：英文，1：中文
+		var TextMode =0;//  0: 普通文本，1: 音素结构文本 输入文本模式
+		var ScoreCoeff=1.0;//[1.0~4.0]
+		var params = {
+			WorkMode: WorkMode,
+			EvalMode: EvalMode,
+			StorageMode: StorageMode,
+			ServerType: ServerType,
+			ScoreCoeff: ScoreCoeff,
+			TextMode: TextMode
+		};
+		params.TransInitUrl = TransInitUrl;
+		myVoiceRecorder = new TencentSOE(params);
+	}
+}
+  
+  function notifyTryAgain(){
+	let userData={};
+	userData.suc=false;
+	let evt = new cc.Event.EventCustom("VOICEPROCESSING", true);
+	evt.setUserData(userData);
+	cc.systemEvent.dispatchEvent(evt);
+	recorderState=0;
+	
+  }
+  
+  window.startVoiceRecord=function(testText){
+	  
+	  if(recorderState==0 && (typeof(myVoiceRecorder) != "undefined")){
+		  console.log("startVoiceRecord=",testText);
+		  recorderState=1;
+		  myVoiceRecorder.start({
+		  RefText: testText,
+		  error: function(err) {
+			console.log(err);
+		  },
+		  complete: function() {
+			console.log('录音超过1分钟未停止触发此回调')
+		  },
+		  success: function(res) {
+			console.log(res);
+		  }
+		});
+	  }else{
+		 notifyTryAgain();
+	  }
+
+  }
+  
+  window.stopVoiceRecord=function(){
+	  if(recorderState==1){
+	    recorderState=2;
+		myVoiceRecorder.stop({
+		  success(res) {
+			let userData={};
+			userData.suc=true;
+			userData.data=res;
+			let evt = new cc.Event.EventCustom("VOICEPROCESSING", true);
+			evt.setUserData(userData);
+			cc.systemEvent.dispatchEvent(evt);
+			recorderState=0;
+		  },
+		  error(err) {
+			notifyTryAgain();
+		  }
+		});
+	}
+  }
+ 
+  function onResults(results) {
+	  if (results.multiHandLandmarks && results.multiHandLandmarks.length>0) {
+		 //console.log(results.multiHandLandmarks[0].length);
+		 let userData={};
+		 userData=results.multiHandLandmarks[0][0];
+		 let evt = new cc.Event.EventCustom("HAND_TRACKING", true);
+		 evt.setUserData(userData);
+		 cc.systemEvent.dispatchEvent(evt);
+	  }
+	}
+  
+  window.startTracking=function(){
+	const videoElement = document.getElementsByClassName('input_video')[0];
+	const canvasElement = document.getElementsByClassName('output_canvas')[0];
+	const canvasCtx = canvasElement.getContext('2d');
+	const hands = new Hands({locateFile: (file) => {
+	  return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.1.1606863095/${file}`;
+	}});
+	hands.setOptions({
+		  selfieMode: true,
+		  maxNumHands: 1,
+		  minDetectionConfidence: 0.5,
+		  minTrackingConfidence: 0.5
+		});
+	hands.onResults(onResults);
+	const camera = new Camera(videoElement, {
+	  onFrame: async () => {
+		await hands.send({image: videoElement});
+	  },
+	  width: 360,
+	  height: 240
+	});
+	camera.start();
+  }
+</script>
+</body>
+</html>
